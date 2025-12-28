@@ -1,4 +1,5 @@
 ---
+layout: default
 title: SyncTables Procedure
 nav_order: 1
 parent: Stored Procedures

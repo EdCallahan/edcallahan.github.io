@@ -1,4 +1,5 @@
 ---
+layout: default
 title: PowerShell
 nav_order: 3
 ---
