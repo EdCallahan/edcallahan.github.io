@@ -6,7 +6,7 @@ parent: SyncTables Procedure
 grand_parent: SQL
 ---
 
-[SyncTables.sql](SyncTables.sql)
+[Download SyncTables.sql](SyncTables.sql)
 
 ```sql
 {% include_relative SyncTables.sql %}

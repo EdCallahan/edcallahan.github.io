@@ -52,7 +52,10 @@ select [FirstName], [LastName], [Department] from dbo.Source
 --- Phyllis has a RecCount of 1 and Table is "Source". She needs to be added to the Destination since she's in the Source. 
 ---
 
+drop table if exists #updates
+
 select FirstName, LastName, count(*) RecCount, max([Table]) [Table]
+    into #updates
     from (
         select 'Source' [Table], [FirstName], [LastName], [Department] from dbo.Source
         except
@@ -66,34 +69,67 @@ select FirstName, LastName, count(*) RecCount, max([Table]) [Table]
     ) t
     group by FirstName, LastName
 
+select * from #updates
+
+---
+--- Insert command
+---
+
+insert into dbo.Destination (FirstName, LastName, Department) 
+select a.FirstName, a.LastName, a.Department
+    from dbo.Source a
+    join #updates b
+    on a.FirstName=b.FirstName and a.LastName=b.LastName
+    where b.RecCount=1 and b.[Table]='Source'
+
+---
+--- Updates
+---
+
+update dbo.Destination
+set Department=b.Department
+    from #updates a
+    join dbo.Source b
+    on a.FirstName=b.FirstName and a.LastName=b.LastName
+    join dbo.Destination c
+    on a.FirstName=c.FirstName and a.LastName=c.LastName
+    where a.RecCount=2
+
+---
+--- Deletes
+---
+
+delete dbo.Destination 
+    from dbo.Destination a
+    join #updates b
+    on a.FirstName=b.FirstName and a.LastName=b.LastName
+    where b.RecCount=1 and b.[Table]='Destination'
 
 
-DECLARE @RC int
-DECLARE @from_db varchar(500) = 'Utils'
-DECLARE @from_schema varchar(500) = 'dbo'
-DECLARE @from_table varchar(500) = 'Source'
-DECLARE @to_db varchar(500) = 'Utils'
-DECLARE @to_schema varchar(500) = 'dbo'
-DECLARE @to_table varchar(500) = 'Destination'
-DECLARE @msg nvarchar(500)
-DECLARE @updates int
-DECLARE @inserts int
-DECLARE @deletes int
+---
+--- Executing dbo.SyncTables
+---
 
--- TODO: Set parameter values here.
+DECLARE
+     @RC int
+    ,@msg nvarchar(500)
+    ,@updates int
+    ,@inserts int
+    ,@deletes int
 
 EXECUTE @RC = [dbo].[SyncTables] 
-   @from_db
-  ,@from_schema
-  ,@from_table
-  ,@to_db
-  ,@to_schema
-  ,@to_table
-  ,@rc OUTPUT
-  ,@msg OUTPUT
-  ,@updates OUTPUT
-  ,@inserts OUTPUT
-  ,@deletes OUTPUT
+     @from_db = 'Utils'
+    ,@from_schema = 'dbo'
+    ,@from_table = 'Source'
+    ,@to_db = 'Utils'
+    ,@to_schema = 'dbo'
+    ,@to_table = 'Destination'
+    ,@rc = @rc OUTPUT
+    ,@msg = @msg OUTPUT
+    ,@updates = @updates OUTPUT
+    ,@inserts = @inserts OUTPUT
+    ,@deletes =@deletes OUTPUT
+    ,@max_deletes_allowed = 0
 
 print @msg
 print 'Updates: ' + cast(@updates as varchar)

@@ -1,0 +1,19 @@
+// JTD wraps all tables in a table-wrapper div tag, override it's behavior here
+
+.table-wrapper table {
+  border-collapse: collapse !important;
+  width: auto !important;
+}
+
+.table-wrapper th,
+.table-wrapper td {
+  border: 1px solid #ccc;
+  padding: 6px 10px;
+}
+
+.table-wrapper {
+  display: inline-block !important;
+  margin: 1rem 0;
+  width: auto !important;
+}
+

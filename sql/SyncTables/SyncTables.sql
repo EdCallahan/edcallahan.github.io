@@ -1,6 +1,10 @@
 use utils
 go
 
+IF not exists (select * from sys.schemas where name='tmp_sync')
+    EXEC('CREATE SCHEMA tmp_sync');
+go
+
 drop procedure if exists [dbo].[SyncTables]
 go
 
@@ -13,6 +17,9 @@ CREATE PROCEDURE [dbo].[SyncTables]
     ,@to_db VARCHAR(500)
     ,@to_schema VARCHAR(500)
     ,@to_table VARCHAR(500)
+
+     -- if specified, SyncTables will not allow deletes over this count
+    ,@max_deletes_allowed int = NULL
 
     -- output parameters
     ,@rc int OUTPUT
@@ -43,13 +50,13 @@ BEGIN
     SET NOCOUNT ON
 
     DECLARE
-            @cmd nvarchar(4000)
-           ,@cols nvarchar(4000)
-           ,@pks nvarchar(4000)
-           ,@allcols nvarchar(4000)
-           ,@on_stmt nvarchar(4000)
-           ,@params nvarchar(4000)
-           ,@record_count int
+         @cmd nvarchar(4000)
+        ,@cols nvarchar(4000)
+        ,@pks nvarchar(4000)
+        ,@allcols nvarchar(4000)
+        ,@on_stmt nvarchar(4000)
+        ,@params nvarchar(4000)
+        ,@record_count int
 
     SET @msg = ''
 
@@ -107,7 +114,7 @@ BEGIN
                 RETURN -1
             END 
 
-        -- get comma delimitted list of PK columns
+        -- get comma delimited list of PK columns
         SELECT @pks = Column_Name + ISNULL(', ' + @pks, '') FROM #PK
 
         -- get a list of the rest of the columns (not in primary key)
@@ -116,9 +123,10 @@ BEGIN
             select rtrim(f.COLUMN_NAME) column_name
                 from ' + @from_db + '.INFORMATION_SCHEMA.COLUMNS f
                 join ' + @to_db + '.INFORMATION_SCHEMA.COLUMNS t
-                on f.table_name=t.table_name and f.column_name=t.column_name and f.table_schema=t.table_schema
-                where f.table_name=''' + @from_table + ''' and f.table_schema=''' + @from_schema + '''
-                and f.column_name not in (select column_name from #PK)
+                on f.column_name=t.column_name 
+                    and f.table_schema=''' + @from_schema + ''' and t.table_schema=''' + @to_schema + '''
+                    and f.table_name=''' + @from_table + ''' and t.table_name=''' + @to_table + '''
+                where f.column_name not in (select column_name from #PK)
                 order by f.COLUMN_NAME'
 
         EXEC (@cmd)
@@ -203,7 +211,7 @@ BEGIN
         @ParmDef,
         @valOUT = @delcount OUTPUT;
 
-    IF @delcount > 200
+    IF @delcount > @max_deletes_allowed
     BEGIN
 
         SET @msg = 'Error updating ' + @to_db + '.' + @to_schema + '.' + @to_table + ', too many records would be deleted (' + cast(@delcount as varchar) + ')'
