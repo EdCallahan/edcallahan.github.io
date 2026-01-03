@@ -6,7 +6,7 @@ parent: SyncTables-NoPK Procedure
 grand_parent: SQL
 ---
 
-[Download SyncTables.sql](SyncTables-NoPK.sql)
+[Download SyncTables-NoPK.sql](SyncTables-NoPK.sql)
 
 ```sql
 {% include_relative SyncTables-NoPK.sql %}
